@@ -32,7 +32,7 @@ To install this package first clone this repository and move to the NanoGrad fol
      pip install -e .
      ```
 
-With these steps, your `nanograd` package should be installed in your Python environment.
+With these steps, your `NanoGrad` package should be installed in your Python environment.
 
 ## Test Colab
 
