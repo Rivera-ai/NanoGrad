@@ -10,6 +10,8 @@ NanoGrad: A small Autograd project
 
 ---
 
+## Autograd based on Andrej Karpathy's MicroGrad project :b
+
 ## Install
 
 To install this package first clone this repository and move to the NanoGrad folder where the setup.py is available and then run this command:
