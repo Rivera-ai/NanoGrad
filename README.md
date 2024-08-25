@@ -27,3 +27,6 @@ To install this package first clone this repository and move to the NanoGrad fol
      ```
 
 With these steps, your `nanograd` package should be installed in your Python environment.
+
+## Test Colab
+[Colab](https://colab.research.google.com/drive/1DbOFuh5cDcPpdvL2Tqe6UemvU09FcDMo?usp=sharing)
