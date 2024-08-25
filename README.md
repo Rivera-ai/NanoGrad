@@ -11,6 +11,7 @@ NanoGrad: A small Autograd project
 ---
 
 ## Autograd based on Andrej Karpathy's MicroGrad project :b
+[GitHub MicroGrad](https://github.com/karpathy/micrograd)
 
 ## Install
 
