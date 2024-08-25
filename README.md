@@ -11,7 +11,13 @@ NanoGrad: A small Autograd project
 ---
 
 ## Autograd based on Andrej Karpathy's MicroGrad project :b
-[GitHub MicroGrad](https://github.com/karpathy/micrograd)
+<p align="center">
+    <a href="https://github.com/karpathy/micrograd">
+        <img src="https://img.shields.io/badge/GitHub-MicroGrad-blue" alt="GitHub MicroGrad" width="200" />
+    </a>
+</p>
+
+
 
 ## Install
 
@@ -29,4 +35,10 @@ To install this package first clone this repository and move to the NanoGrad fol
 With these steps, your `nanograd` package should be installed in your Python environment.
 
 ## Test Colab
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1DbOFuh5cDcPpdvL2Tqe6UemvU09FcDMo?usp=sharing)
+
+<p align="center">
+    <a href="https://colab.research.google.com/drive/1DbOFuh5cDcPpdvL2Tqe6UemvU09FcDMo?usp=sharing">
+        <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab" width="200" />
+    </a>
+</p>
+
