@@ -1,0 +1,11 @@
+LICENSE
+README.md
+setup.py
+NanoGrad/Checkpoint.py
+NanoGrad/Engine.py
+NanoGrad/__init__.py
+NanoGrad/nn.py
+NanoGrad.egg-info/PKG-INFO
+NanoGrad.egg-info/SOURCES.txt
+NanoGrad.egg-info/dependency_links.txt
+NanoGrad.egg-info/top_level.txt
