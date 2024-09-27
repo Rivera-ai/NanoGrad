@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import random
 
 class Value:
     """ stores a single scalar value and its gradient """
@@ -130,24 +131,24 @@ class Value:
 
 class Tensor:
     def __init__(self, data, requires_grad=False):
-        """ Implementación del Tensor usando Numpy
-        Parametros:
-        - data: un array de numpy es la data del tensor.
-        - requires_grad: dato tipo booleano por si se necesitan gradientes para este tensor. 
-        """
-
-        self.data = np.array(data, dtype=np.float32) # Maybe talvez despues lo cambie a float16 por cuestion de eficiencia
+        self.data = np.array(data, dtype=np.float32)
         self.requires_grad = requires_grad
         self.grad = np.zeros_like(self.data) if requires_grad else None
         self._backward = lambda: None
         self._prev = []
         self._op = ''
 
-    def __repr__(self): # Imprimir la representación del Tensor ejemplo: Tensor(data=[[1, 2], [3, 4]], grad=[[0.1, 0.2], [0.3, 0.4]])
+    def __repr__(self):
         return f"Tensor(data={self.data}, grad={self.grad})"
 
+    def _ensure_grad(self):
+        if self.grad is None:
+            self.grad = np.zeros_like(self.data)
+            print(f"Gradiente inicializado para {self}: {self.grad}")
+
     def backward(self):
-        """Reliza el backward en el grafo computacional """
+        self._ensure_grad()
+
         topo = []
         visited = set()
 
@@ -156,59 +157,151 @@ class Tensor:
                 visited.add(t)
                 for parent in t._prev:
                     build_topo(parent)
+                print(f"Registrando operación: {t._op}")
                 topo.append(t)
         build_topo(self)
 
-        self.grad = np.ones_like(self.data) # Inicializamos gradiente como 1 (derivada de sí mismo)
-
+        self.grad = np.ones_like(self.data)
+        print(f"Inicializando gradiente en backward: {self.grad}")
         for t in reversed(topo):
+            print(f"Backward para operación: {t._op}")
+            print(f"Gradiente antes: {t.grad}")
             t._backward()
+            print(f"Gradiente después: {t.grad}")
 
     def __add__(self, other):
-        """ Suma de tensores """
 
+        
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(self.data + other.data, requires_grad=True)
+        out = Tensor(self.data + other.data, requires_grad=self.requires_grad or other.requires_grad)
 
         def _backward():
+            print(f"Backward de la suma: grad de salida (out): {out.grad}")
+
+            def apply_grad(tensor, grad):
+                if np.isscalar(grad) or grad.size == 1:
+            # Si el gradiente es un escalar o un array de un solo elemento,
+            # lo sumamos directamente sin reshape
+                    tensor.grad += np.sum(grad)
+                else:
+            # Si no es un escalar, hacemos el reshape
+                    tensor.grad += grad.reshape(tensor.grad.shape)
+    
             if self.requires_grad:
-                self.grad += out.grad
-            if other.requires_grad:
-                other.grad += out.grad
+                self._ensure_grad()
+                grad_self = out.grad
         
+        # Manejar casos de escalares y diferentes dimensiones
+                if np.isscalar(self.data) or np.isscalar(grad_self):
+                    self.grad += np.sum(grad_self)
+                    apply_grad(self, grad_self)
+                else:
+            # Expandir dimensiones si es necesario
+                    while self.data.ndim < grad_self.ndim:
+                        self.data = np.expand_dims(self.data, axis=-1)
+                    while grad_self.ndim < self.data.ndim:
+                        grad_self = np.expand_dims(grad_self, axis=-1)
+            
+                    if self.data.shape != grad_self.shape:
+                # Realizar suma reducida en los ejes necesarios
+                        axes = tuple(i for i in range(grad_self.ndim) if self.data.shape[i] == 1 and grad_self.shape[i] != 1)
+                        grad_self = np.sum(grad_self, axis=axes, keepdims=True)
+            
+                    self.grad += grad_self.reshape(self.grad.shape)
+
+                    apply_grad(self, grad_self)
+        
+                print(f"Gradiente self después de acumular: {self.grad}")
+    
+            if other.requires_grad:
+                other._ensure_grad()
+                grad_other = out.grad
+        
+        # Manejar casos de escalares y diferentes dimensiones
+                if np.isscalar(other.data) or np.isscalar(grad_other):
+                    other.grad += np.sum(grad_other)
+                    apply_grad(self, grad_self)
+                else:
+            # Expandir dimensiones si es necesario
+                    while other.data.ndim < grad_other.ndim:
+                        other.data = np.expand_dims(other.data, axis=-1)
+                    while grad_other.ndim < other.data.ndim:
+                        grad_other = np.expand_dims(grad_other, axis=-1)
+            
+                    if other.data.shape != grad_other.shape:
+                # Realizar suma reducida en los ejes necesarios
+                        axes = tuple(i for i in range(grad_other.ndim) if other.data.shape[i] == 1 and grad_other.shape[i] != 1)
+                        grad_other = np.sum(grad_other, axis=axes, keepdims=True)
+            
+                    other.grad += grad_other.reshape(other.grad.shape)
+
+                    apply_grad(self, grad_self)
+        
+                print(f"Gradiente other después de acumular: {other.grad}")
+
         out._backward = _backward
-        other._prev = [self, other]
+        out._prev = [self, other]
         out._op = '+'
         return out
 
+    def __sub__(self, other):
+        self._ensure_grad()
+        return self + (-other)
+
     def __mul__(self, other):
-        """ Multiplicación elemento a elemento"""
+
         other = other if isinstance(other, Tensor) else Tensor(other)
-        out = Tensor(self.data * other.data, requires_grad=True)
+        out = Tensor(self.data * other.data, requires_grad=self.requires_grad or other.requires_grad)
 
         def _backward():
+            print(f"Backward de la multiplicación: grad de salida (out): {out.grad}")
             if self.requires_grad:
-                self.grad += other.data * out.grad
+                self._ensure_grad()
+                print(f"Gradiente self antes de acumular: {self.grad}")
+                self.grad += np.broadcast_to(other.data * out.grad, self.data.shape)
+                print(f"Gradiente self después de acumular: {self.grad}")
             if other.requires_grad:
-                other.grad += self.data * out.grad
-        
+                other._ensure_grad()
+                print(f"Gradiente other antes de acumular: {other.grad}")
+                other.grad += np.broadcast_to(self.data * out.grad, other.data.shape)
+                print(f"Gradiente other después de acumular: {other.grad}")
+
         out._backward = _backward
         out._prev = [self, other]
         out._op = '*'
         return out
 
-    def matmul(self, other):
-        """Producto matricial entre dos tensores"""
-
-        assert self.data.shape[-1] == other.data.shape[-2], "Dimensiones incompatibles para multiplicación de matrices."
-        out = Tensor(np.dot(self.data, other.data), requires_grad=True)
+    def __pow__(self, exponent):
+        assert isinstance(exponent, (int, float)), "El exponente debe ser un número (int o float)"
+        out = Tensor(self.data ** exponent, requires_grad=self.requires_grad)
 
         def _backward():
             if self.requires_grad:
+                self._ensure_grad()  # Asegurar inicialización
+                grad = exponent * self.data ** (exponent - 1) * out.grad
+                self.grad += np.broadcast_to(grad, self.data.shape)
+
+        out._backward = _backward
+        out._prev = [self]
+        out._op = f'**{exponent}'
+        return out
+
+    def matmul(self, other):
+
+
+        assert self.data.shape[-1] == other.data.shape[-2], "Dimensiones incompatibles para multiplicación de matrices."
+        requires_grad = self.requires_grad or other.requires_grad
+        out = Tensor(np.dot(self.data, other.data), requires_grad=requires_grad)
+
+        def _backward():
+            print(f"Backward para matmul")
+            if self.requires_grad:
+                self._ensure_grad()  # Asegurar inicialización
                 self.grad += np.dot(out.grad, other.data.T)
             if other.requires_grad:
+                other._ensure_grad()  # Asegurar inicialización
                 other.grad += np.dot(self.data.T, out.grad)
-        
+
         out._backward = _backward
         out._prev = [self, other]
         out._op = 'matmul'
@@ -216,38 +309,74 @@ class Tensor:
         return out
 
     def relu(self):
-        """Función de activación ReLU."""
+
         out = Tensor(np.maximum(0, self.data), requires_grad=True)
 
         def _backward():
-            self.grad += (self.data > 0) * out.grad
+            if self.requires_grad:
+                self._ensure_grad()
+                self.grad += (self.data > 0) * out.grad
+                print(f"Gradiente ReLU: {self.grad}")
 
         out._backward = _backward
         out._prev = [self]
         out._op = 'relu'
         return out
 
-    def sum(self, axis=None):
-        """Suma de todos los elementos o en un eje específico."""
-        out = Tensor(np.sum(self.data, axis=axis), requires_grad=True)
+    def leaky_relu(self, alpha=0.01):
+        out = Tensor(np.where(self.data > 0, self.data, alpha * self.data), requires_grad=True)
 
         def _backward():
-            self.grad += np.ones_like(self.data) * out.grad
+            print(f"Backward de Leaky ReLU: grad de salida (out): {out.grad}")
+            if self.requires_grad:
+                self._ensure_grad()  # Asegurar inicialización
+                self.grad += np.where(self.data > 0, 1, alpha) * out.grad
+
+        out._backward = _backward
+        out._prev = [self]
+        out._op = 'leaky_relu'
+        return out
+
+
+    def sum(self, axis=None, keepdims=False):
+        out = Tensor(np.sum(self.data, axis=axis, keepdims=keepdims), requires_grad=self.requires_grad)
+
+        def _backward():
+            print(f"Backward para sum: grad de salida (out): {out.grad}")
+            if self.requires_grad:
+                self._ensure_grad()  # Asegurar inicialización
+                grad = out.grad
+                # Si axis está especificado, expandir grad para que coincida con self.data.shape
+                if axis is not None:
+                    axes = axis if isinstance(axis, tuple) else (axis,)
+                    grad = np.expand_dims(grad, axes)
+                # Difundir grad para que coincida con self.data.shape
+                grad = np.broadcast_to(grad, self.data.shape)
+                print(f"Gradiente self antes de acumular: {self.grad}")
+                self.grad += grad
+                print(f"Gradiente self después de acumular: {self.grad}")
 
         out._backward = _backward
         out._prev = [self]
         out._op = 'sum'
         return out
 
-    def T(self):
-        """Transposición del tensor."""
-        out = Tensor(self.data.T, requires_grad=True)
+    def __neg__(self):
+        out = Tensor(-self.data, requires_grad=self.requires_grad)
 
         def _backward():
-            self.grad += out.grad.T
+            if self.requires_grad:
+                self._ensure_grad()
+                self.grad += -out.grad  # La derivada de -x con respecto a x es -1
 
         out._backward = _backward
         out._prev = [self]
-        out._op = 'transpose'
+        out._op = 'neg'
         return out
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return id(self) == id(other)
 

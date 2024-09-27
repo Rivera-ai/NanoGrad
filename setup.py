@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="NanoGrad",
-    version="0.1.1",
+    version="0.1.2",
     author="Rivera.ai/Fredy",
     author_email="riveraaai200678@gmail.com",
     description="A small Autograd project",

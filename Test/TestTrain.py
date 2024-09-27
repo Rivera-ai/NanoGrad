@@ -42,7 +42,7 @@ y = [Value(2), Value(3), Value(1.8), Value(2.2), Value(3.2),
 X_norm = normalize(X)
 
 # Entrenar la red
-model = MLP(3, [16, 16, 1])  # 3 entradas, dos capas ocultas de 16 neuronas, 1 salida
+model = MLPV(3, [16, 16, 1])  # 3 entradas, dos capas ocultas de 16 neuronas, 1 salida
 train(model, X_norm, y, learning_rate=0.0001, epochs=5000)
 checkpoint = SaveCheckpoint(model, 'model.pkl')
 checkpoint.save()
