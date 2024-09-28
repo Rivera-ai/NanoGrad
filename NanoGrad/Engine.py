@@ -169,9 +169,9 @@ class Tensor:
             t._backward()
             print(f"Gradiente después: {t.grad}")
 
-    def __add__(self, other):
+    def __add__(self, other): 
 
-        
+
         other = other if isinstance(other, Tensor) else Tensor(other)
         out = Tensor(self.data + other.data, requires_grad=self.requires_grad or other.requires_grad)
 
@@ -179,64 +179,38 @@ class Tensor:
             print(f"Backward de la suma: grad de salida (out): {out.grad}")
 
             def apply_grad(tensor, grad):
-                if np.isscalar(grad) or grad.size == 1:
+
             # Si el gradiente es un escalar o un array de un solo elemento,
             # lo sumamos directamente sin reshape
+                if np.isscalar(grad) or grad.size == 1:
                     tensor.grad += np.sum(grad)
                 else:
-            # Si no es un escalar, hacemos el reshape
-                    tensor.grad += grad.reshape(tensor.grad.shape)
-    
+                # Expandir dimensiones si es necesario
+                    while tensor.grad.ndim < grad.ndim:
+                        tensor.grad = np.expand_dims(tensor.grad, axis=-1)
+                    while grad.ndim < tensor.grad.ndim:
+                        grad = np.expand_dims(grad, axis=-1)
+
+                    if tensor.grad.shape != grad.shape:
+                    # Realizar suma reducida en los ejes necesarios
+                        axes = tuple(i for i in range(grad.ndim) if tensor.grad.shape[i] == 1 and grad.shape[i] != 1)
+                        grad = np.sum(grad, axis=axes, keepdims=True)
+                
+                    tensor.grad += grad
+
             if self.requires_grad:
                 self._ensure_grad()
                 grad_self = out.grad
-        
-        # Manejar casos de escalares y diferentes dimensiones
-                if np.isscalar(self.data) or np.isscalar(grad_self):
-                    self.grad += np.sum(grad_self)
-                    apply_grad(self, grad_self)
-                else:
-            # Expandir dimensiones si es necesario
-                    while self.data.ndim < grad_self.ndim:
-                        self.data = np.expand_dims(self.data, axis=-1)
-                    while grad_self.ndim < self.data.ndim:
-                        grad_self = np.expand_dims(grad_self, axis=-1)
-            
-                    if self.data.shape != grad_self.shape:
-                # Realizar suma reducida en los ejes necesarios
-                        axes = tuple(i for i in range(grad_self.ndim) if self.data.shape[i] == 1 and grad_self.shape[i] != 1)
-                        grad_self = np.sum(grad_self, axis=axes, keepdims=True)
-            
-                    self.grad += grad_self.reshape(self.grad.shape)
 
-                    apply_grad(self, grad_self)
-        
+                apply_grad(self, grad_self)
+
                 print(f"Gradiente self después de acumular: {self.grad}")
-    
+
             if other.requires_grad:
                 other._ensure_grad()
                 grad_other = out.grad
-        
-        # Manejar casos de escalares y diferentes dimensiones
-                if np.isscalar(other.data) or np.isscalar(grad_other):
-                    other.grad += np.sum(grad_other)
-                    apply_grad(self, grad_self)
-                else:
-            # Expandir dimensiones si es necesario
-                    while other.data.ndim < grad_other.ndim:
-                        other.data = np.expand_dims(other.data, axis=-1)
-                    while grad_other.ndim < other.data.ndim:
-                        grad_other = np.expand_dims(grad_other, axis=-1)
-            
-                    if other.data.shape != grad_other.shape:
-                # Realizar suma reducida en los ejes necesarios
-                        axes = tuple(i for i in range(grad_other.ndim) if other.data.shape[i] == 1 and grad_other.shape[i] != 1)
-                        grad_other = np.sum(grad_other, axis=axes, keepdims=True)
-            
-                    other.grad += grad_other.reshape(other.grad.shape)
 
-                    apply_grad(self, grad_self)
-        
+                apply_grad(other, grad_other)
                 print(f"Gradiente other después de acumular: {other.grad}")
 
         out._backward = _backward
